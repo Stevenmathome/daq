@@ -1,0 +1,101 @@
+# DAQ Rev B panel configuration.
+# Edit this file, then rebuild. A pre-build script checks it and writes
+# include/config_gen.h. The Teensy does not parse YAML.
+#
+# Quote thermocouple types. YAML treats yes, no, on, and off as booleans,
+# and some parsers do the same with the bare letters T, Y, and N.
+
+version: 1
+
+# USB CSV rows per second. 0 starts quiet until a STREAM command.
+# Load cells only produce a new sample at 10 Hz (RATE pin is tied to GND).
+stream_hz: 10
+
+# How long a button or the E-stop sense must hold before it counts.
+debounce_ms: 25
+
+# counts_per_unit is HX711 counts per engineering unit, after tare.
+# eu = (raw - tare) / counts_per_unit. Use a negative number if a cell
+# reads backwards (green/white swapped). Boot tare is this value; the tare
+# button replaces it until power cycle, and does not rewrite this file.
+load_cells:
+  - {id: LC1, name: Specimen 1, tare: 0, counts_per_unit: 1, unit: raw}
+  - {id: LC2, name: Specimen 2, tare: 0, counts_per_unit: 1, unit: raw}
+  - {id: LC3, name: Specimen 3, tare: 0, counts_per_unit: 1, unit: raw}
+
+# Volts are at the sensor, before the 10k/20k divider.
+# 0.5 V = 0 PSI and 4.5 V = full_scale_psi is the usual 0.5-4.5 V part.
+# The pin itself only sees two thirds of that.
+pressures:
+  - {id: PT1, name: Pressure 1, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT2, name: Pressure 2, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT3, name: Pressure 3, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT4, name: Pressure 4, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT5, name: Pressure 5, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT6, name: Pressure 6, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+
+# The TC terminal silkscreen is pin 1 blue, pin 2 red (ANSI type T:
+# blue positive, red negative). Change the letter if the junction is not T.
+thermocouples:
+  - {id: TC1, name: Temp 1, type: "T"}
+  - {id: TC2, name: Temp 2, type: "T"}
+  - {id: TC3, name: Temp 3, type: "T"}
+
+# Display 1, display 2, display 3. The page button cycles this list.
+# Channel order is fixed: one reading per display.
+pages:
+  - {name: Load, show: [LC1, LC2, LC3]}
+  - {name: Pressure, show: [PT1, PT2, PT3]}
+  - {name: Pressure 2, show: [PT4, PT5, PT6]}
+  - {name: Temperature, show: [TC1, TC2, TC3]}
+
+# Eight headers, each exactly once. action: none leaves a header unused.
+# active high means the contact closes to +3V3 (the board pulldown makes
+# an open contact read low).
+#
+# There are eight inputs and seven valve outputs, so not every valve gets
+# a button. Valves 5, 6, and the extra 12 V output (valve 7) are serial
+# commands only, and they still obey the arm interlock and the E-stop.
+inputs:
+  - {id: DI1, name: Arm, action: arm, active: high}
+  - {id: DI2, name: Valve 1, action: toggle_valve, valve: 1, active: high}
+  - {id: DI3, name: Valve 2, action: toggle_valve, valve: 2, active: high}
+  - {id: DI4, name: Valve 3, action: momentary_valve, valve: 3, active: high}
+  - {id: DI5, name: Tare, action: tare, channels: [LC1, LC2, LC3], active: high}
+  - {id: DI6, name: Page, action: display_page, active: high}
+  - {id: DI7, name: Reset, action: reset, active: high}
+  - {id: DI8, name: Valve 4, action: toggle_valve, valve: 4, active: high}
+
+# E-stop sense. The pin is not fixed on the Rev B schematic; set it to the
+# GPIO you actually wire. Free pins: 10, 14, 39, 40, 41.
+#
+# This example uses pin 10, pulldown, active low:
+#   normally-closed switch from the pin to +3V3.
+#   Pressed, or the wire falls off -> the pin goes low -> latch.
+# An unwired pin 10 therefore reads tripped and the valves stay latched.
+# That is the safe bench state. Tie the pin to +3V3 if you need the valves
+# before the switch exists.
+#
+# The mushroom's power contact is separate. It must open 12 V to the
+# solenoid coils only. Do not put it in series with J16, or the Teensy
+# and the logger die with the valves. See the README wiring notes.
+#
+# reset is the input that clears the latch, and only after this sense has
+# released. A reset that arrives while the line is still tripped is ignored.
+estop:
+  pin: 10
+  active: low
+  pull: down
+  reset: DI7
+
+# A valve turns on only while every interlock that names it is satisfied
+# and the E-stop latch is clear. Arm dropping clears a toggle, so the
+# valve does not come back by itself when you arm again.
+interlocks:
+  - {valve: 1, requires: DI1}
+  - {valve: 2, requires: DI1}
+  - {valve: 3, requires: DI1}
+  - {valve: 4, requires: DI1}
+  - {valve: 5, requires: DI1}
+  - {valve: 6, requires: DI1}
+  - {valve: 7, requires: DI1}

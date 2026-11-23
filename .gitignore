@@ -1,0 +1,9 @@
+.pio/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+*.csv
+.cache/
+firmware/include/config_gen.h
