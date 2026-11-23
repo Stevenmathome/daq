@@ -1,3 +1,26 @@
+# DAQ Rev B v3 - replaceable ATO fuse holder (Sun Nov 22 2026, evening CST)
+KiCad 9.0.2. The DAQ 2 originals are untouched (hash-verified).
+
+## Fuse holder change (this revision)
+F1 (previously a 20 A non-resettable SMD fuse, LUTE LTC2410-2200TSK) is now a **board-mounted holder for a standard regular-size ATO/ATC automotive blade fuse**, so a blown fuse can be pulled and replaced by hand with the board on standoffs.
+
+| Item | Choice |
+|---|---|
+| Holder | Littelfuse **178.6165.0002** (ATO / FKS / ATC PCB holder, 4-pin THT, vertical top entry) |
+| LCSC | **C207061** |
+| Price / stock (live, this evening) | **$2.32** qty-1, **193** in JLC stock, library type **Extended** |
+| Ratings | 80 V, **22.5 A continuous / 30 A max** (silver-plated 4-pin terminals). Design load 14 A; 20 A fuse. |
+| Assembly | **JLC can place** it as a through-hole Extended part (same class as the Phoenix terminals). It can also be hand-soldered. |
+| Fuse | **20 A ATO blade fuse, user supplied** — not on the JLC BOM, not in the shipment. Noted in the full BOM, assembly notes (sheet 7) and power budget (sheet 6). Typical colour: yellow. |
+| Placement | Front / bottom edge, immediately below J16 (12 V input), centre at **(114.5, 147.25) mm**. The long axis is parallel to the edge. The fuse pulls straight up and is reachable with the board on standoffs. |
+| Board size | **Unchanged: 142.5 x 138.0 mm**. Existing pour widths were kept and extended to the holder (~13.3 mm x 2 layers under F1, well above 20 A at 10 C rise). The holder pads are PTH and stitch the layers. |
+| ERC / DRC | **0 / 0** (schematic parity included) |
+
+An ESTOP_A bottom-copper run that used to follow the board edge was rerouted around the holder (along y=143.6 mm, then down past D10).
+
+If the board is mounted with components facing the L-bracket, use ~25 mm standoffs (an inserted ATO fuse stands ~20 mm above the board) or let the holder sit past the bracket edge. Components facing away from the bracket need no extra height.
+
+---
 # DAQ Rev B v2 - change report (Phase 3 update, Sun Nov 22 2026, CST)
 KiCad 9.0.2. The DAQ 2 originals are untouched (hash-verified). The Phase 2 report is kept below as history; where it conflicts with this section, this section wins.
 
