@@ -142,5 +142,5 @@ def test_show_yaml_is_ready_to_paste():
     assert "unit: \"psi\"" in text
     assert "- [0.5, 0]" in text
     assert "- [4.5, 100]" in text
-    tc = format_show("TC1", "Temp 1", "C", Fit(1, 0), "config", tc_type="T")
-    assert 'type: "T"' in tc
+    tc = format_show("TC1", "Temp 1", "C", Fit(1, 0), "config", tc_type="K")
+    assert 'type: "K"' in tc

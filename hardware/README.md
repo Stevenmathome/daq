@@ -16,7 +16,7 @@ Open `daq-rev-b/DAQ Rev B.kicad_pro` in KiCad 9. The folder name has no spaces. 
 | `daq-rev-b/fab/DAQ_RevB_BOM_JLCPCB.csv` | JLCPCB BOM. The Teensy is not on it |
 | `daq-rev-b/fab/DAQ_RevB_CPL_JLCPCB.csv` | JLCPCB pick-and-place |
 | `daq-rev-b/fab/DAQ_RevB_BOM_full.csv` | BOM with manufacturer part numbers |
-| `daq-rev-b/docs/DAQ_RevB_docs.pdf` | Eight-sheet drawing set |
+| `daq-rev-b/docs/DAQ_RevB_docs.pdf` | Eight-sheet drawing set, including the first-power checklist |
 | `daq-rev-b/docs/DAQ_RevB_S02`–`S08` `.kicad_sch` | Drawing-sheet sources. The schematic links them |
 | `daq-rev-b/docs/png/` | PNG previews of those sheets |
 | `daq-rev-b/docs/DAQ_RevB_solenoid_research.md` | Solenoid current notes |
@@ -26,7 +26,10 @@ Open `daq-rev-b/DAQ Rev B.kicad_pro` in KiCad 9. The folder name has no spaces. 
 
 ## Ordering
 
-- The Teensy 4.1 is hand-fitted. JLCPCB does not place it. Solder the two 1×24 sockets and plug the module in. Cut the VIN–VUSB pad on the back of the Teensy before USB and 12 V are connected together. After that cut the board does not run from USB alone. J16 still needs 12 V, including while uploading firmware.
+- The Teensy 4.1 is hand-fitted. JLCPCB does not place it. Solder the two 1×24 sockets and plug the module in. Cut the VIN–VUSB pad on the back of the Teensy before USB and 12 V are connected together. After that cut, 12 V on J16 is required both to power the board and to program the Teensy. USB alone does not run it.
+- Thermocouples are type K. Pin 1 is T+ (yellow) and pin 2 is T- (red).
+- Display headers J29–J31 supply 5 V. Use a TM1637 module whose CLK and DIO are not pulled up to 5 V. Teensy 4.1 pins are 3.3 V only.
+- Valve terminals J1–J7 take 0.5 mm² (20 AWG) maximum. Use ferrules.
 - With no E-stop fitted, jumper J32 pins 1–2. Those pins are the normally-closed contact that turns on Q10, the P-FET in the valve 12 V rail. Leave them open and the valves stay unpowered. Pin 10, the sense input, also stays low, so the firmware holds the valve latch.
 - Size the 12 V supply for 15 A or more. Each valve channel is up to 2 A, and all seven on is 14 A.
 - F1 is a Littelfuse 178.6165.0002 ATO/ATC blade-fuse holder (LCSC C207061) on the front edge. The holder is on the JLCPCB BOM. The fuse is not: fit a standard 20 A ATO/ATC fuse after assembly. If it blows, pull it and replace it from the front edge. The fuse body stands about 20 mm off the board. If the board mounts components-down toward the L-bracket, use standoffs about 25 mm long so the fuse clears the bracket.

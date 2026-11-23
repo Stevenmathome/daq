@@ -52,13 +52,12 @@ pressures:
   - {id: PT5, name: Pressure 5, slope: 25, offset: -12.5, unit: psi}
   - {id: PT6, name: Pressure 6, slope: 25, offset: -12.5, unit: psi}
 
-# Silkscreen is pin 1 blue, pin 2 red (ANSI type T: blue positive, red
-# negative). Change the letter if the junction is not T. slope 1 offset 0
-# is no extra correction.
+# Silkscreen is T+ (pin 1) / T- (pin 2). ANSI type K: yellow + / red -.
+# slope 1 offset 0 is no extra correction.
 thermocouples:
-  - {id: TC1, name: Temp 1, type: "T", slope: 1, offset: 0, unit: C}
-  - {id: TC2, name: Temp 2, type: "T", slope: 1, offset: 0, unit: C}
-  - {id: TC3, name: Temp 3, type: "T", slope: 1, offset: 0, unit: C}
+  - {id: TC1, name: Temp 1, type: "K", slope: 1, offset: 0, unit: C}
+  - {id: TC2, name: Temp 2, type: "K", slope: 1, offset: 0, unit: C}
+  - {id: TC3, name: Temp 3, type: "K", slope: 1, offset: 0, unit: C}
 
 # Display 1, display 2, display 3. The page button cycles this list.
 # Channel order is fixed: one reading per display.

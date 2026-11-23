@@ -50,7 +50,7 @@ def test_example_is_the_fail_safe_panel(example, pins):
     assert config.inputs[config.estop_reset_input].id == "DI7"
     assert config.inputs[config.estop_reset_input].action == "reset"
     assert [lock.valve for lock in config.locks] == [1, 2, 3, 4, 5, 6, 7]
-    assert config.thermocouples[0].letter == "T"
+    assert config.thermocouples[0].letter == "K"
     assert config.load_cells[0].slope == 1
     assert config.load_cells[0].offset == 0
     assert config.pressures[0].slope == 25
