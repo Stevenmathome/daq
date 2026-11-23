@@ -34101,7 +34101,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "27b03e9b-4c39-4886-919c-81030263e253")
+		(uuid "f8b0e783-68aa-417f-bf97-11d193403b20")
 		(property "Sheetname" "S2 Index"
 			(at 18.00 266.80 0)
 			(effects
@@ -34144,7 +34144,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "25279c27-c755-4ae7-ade0-d766e52c0f38")
+		(uuid "99c2930a-3c23-41d6-a10c-35f5b4a5e5c1")
 		(property "Sheetname" "S3 Teensy pins"
 			(at 51.00 266.80 0)
 			(effects
@@ -34187,7 +34187,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "5f401108-ae23-4fb1-a15f-1934a4ba6616")
+		(uuid "ce248748-97ae-44c5-830d-0ad54d22826e")
 		(property "Sheetname" "S4 Connectors 1"
 			(at 84.00 266.80 0)
 			(effects
@@ -34230,7 +34230,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "69090a0f-52b3-48de-9be0-469c43d1e977")
+		(uuid "d2d1cee4-4c23-4b43-b918-59000c477e17")
 		(property "Sheetname" "S5 Connectors 2"
 			(at 117.00 266.80 0)
 			(effects
@@ -34273,7 +34273,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "c3e237b0-3d36-4216-a54e-45c536e4feef")
+		(uuid "1b648db8-e5a8-486a-acde-4e238e0395a1")
 		(property "Sheetname" "S6 Power & solenoids"
 			(at 150.00 266.80 0)
 			(effects
@@ -34316,7 +34316,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "d900c3fa-9936-47da-93f7-c5c422ea63f9")
+		(uuid "5b709807-e159-4904-9c73-fe0cab29fb6a")
 		(property "Sheetname" "S7 Assembly"
 			(at 183.00 266.80 0)
 			(effects
@@ -34359,7 +34359,7 @@
 		(fill
 			(color 255 255 194 1)
 		)
-		(uuid "0665b924-f29b-44a5-b34f-4af893466912")
+		(uuid "881a91cd-35a8-4279-8345-4b6cf672091f")
 		(property "Sheetname" "S8 Board drawing"
 			(at 216.00 266.80 0)
 			(effects

@@ -1,3 +1,75 @@
+# DAQ Rev B v4 - integration / usability review (Sun Nov 22 2026, ~8:47 PM CST)
+KiCad 9.0.2. The DAQ 2 originals are untouched (hash-verified: pcb 94a719cee704126c, sch 1799c0af904a158e, pro af384d143baca7c9).
+
+This revision is a first-power-up / wiring review of v3, before a JLCPCB order. The schematic and copper are unchanged. Silkscreen and the documentation set were updated so Steven can see, on the board, which pin is which.
+
+## Status (v4)
+| Check | Result |
+|---|---|
+| ERC, all 8 sheets (`review/erc_final.rpt/.json`) | **0 errors, 0 warnings** |
+| DRC + schematic parity (`review/drc_final.rpt/.json`) | **0 violations, 0 unconnected, 0 parity issues** |
+| Board | 2-layer, 1.6 mm, 1 oz, **142.5 x 138.0 mm** (unchanged) |
+| Docs | `docs/DAQ_RevB_docs.pdf` (8 sheets) + `docs/png/` |
+| Archive | `/workspace/pcb/DAQ_Rev_B_v4.tgz` |
+| Progress render | `/workspace/pcb/progress/09_review.png` (top 3D, new silk visible) |
+
+## Direct answer: where does the E-stop go?
+**J32**, the 4-pin screw terminal on the **front / bottom edge** (left of the three display terminals).
+
+- Pins **1-2** (silk **CUT**): NC contact that hardware-cuts +12V to all valves (Q10). Polarity-free, ~110 uA.
+- Pins **3-4** (silk **SENSE**): NC contact to Teensy pin 10. HIGH = OK, LOW = tripped or unplugged.
+- If no E-stop is fitted yet, **jumper pins 1-2** or the valves stay off. The board now says `JUMPER 1-2 IF NO E-STOP`.
+
+## What was fixed on the board
+Every external connector previously had only its reference (J1, J16, ...) on the silkscreen, except a short J32 note. Function names lived on the Fab layer, which is not printed on the finished PCB. That is the class of problem that led to the E-stop question.
+
+Added or clarified on F.SilkS (DRC kept at 0):
+
+- **J16 12 V in:** `12V IN`, **+** on pin 1 (right when looking at the front of the terminal), **-** on pin 2.
+- **J32 E-stop:** jumper callout; `CUT` under pins 1-2, `SENSE` under pins 3-4, pin numbers 1-4.
+- **J1-J6 valves:** `V1`..`V6` on the wire side, **+** (always-hot +12V_VALVE) and `RTN` (switched return) at the pins. Pin 1 arrow is the + pin.
+- **J7:** `OUT` (valve 7 / 12 V output), same +/- convention.
+- **J12, J13, J14, J10, J11, J9, J8, J15:** `DI1`..`DI8` (the J-numbers are not in DI order), plus `IN` and `3V3` at the pins. Switch between the two pins; close to +3V3 = HIGH.
+- **J20-J22:** `TC1`..`TC3`, `T+` on pin 1, `T-` on pin 2 (type-agnostic, not blue/red or yellow/red).
+- **J23-J28:** `PD1`..`PD6`, `GND` / `5V` / `SIG` (pins 1 / 2 / 3). Amazon 3-wire is black / red / yellow-or-green in that pin order, not red-black-signal starting at pin 1.
+- **J17-J19:** `LC1`..`LC3`, `E+` `E-` `A+` `A-` (pins 1-4).
+- **J29-J31:** `DISP1`..`DISP3`, `5V` `GND` `CLK` `DIO`.
+- **SJ1-SJ3:** `80` on the +3V3 side (default, copper already bridges 1-2), `10` on the GND side.
+
+Docs were updated to match: first-power checklist, the side-edge pin-1 convention (arrow is pin 1; pin 1 is left-most on the top and bottom edges, right-most on the left and right edges), the USB-only power correction, thermocouple type, pressure colours, 5 V budget, and a TM1637 5 V-tolerance warning.
+
+## Firmware (no repo changes made — list for the parent)
+
+`firmware/include/pins.h` on GitHub main **matches the board netlist exactly**: E-stop = pin 10; valves 24-30; LC DOUT 3/0/1, SCK 2; PD 20..15; TC CS 23/22/21, SPI 11/12/13; displays CLK/DIO 4/5, 6/7, 8/9; DI 38, 37, 36, 35, 34, 33, 31, 32. No pin-map changes are needed.
+
+`firmware/config.yaml` thermocouples are type K. Silkscreen is T+ (pin 1) / T- (pin 2). ANSI type K is yellow positive and red negative.
+
+## Needs Steven's decision (not changed)
+- **TM1637 5 V vs Teensy 4.1:** display pin 1 is +5 V. Teensy CLK/DIO pins are **not 5 V tolerant**. If the module pulls CLK/DIO up to 5 V, that can damage the Teensy. Recommendation: use 3.3 V modules, or run VCC at 3.3 V if the displays stay bright enough. Do not leave this as an assumed "3.3 V logic is fine on a 5 V module."
+- **3V3 on the panel:** +3V3 is brought out to every DI terminal (pin 1) and J32 pin 3, with no series resistor or PTC. A shorted panel wire can collapse the Teensy 3.3 V rail. Recommendation: a future single PTC (or a 3V3_PANEL net) on those feeds. Not done here (routing change).
+- **Valve indicator LEDs:** none fitted. Optional future addition; not required for function.
+- **Larger valve terminals:** Phoenix MPT 0,5 is rated 6 A (fine for 2 A electrically) but max wire is 0.5 mm² (20 AWG). If the solenoid leads are thicker, use a ferrule or a short pigtail rather than changing the footprint.
+- **Dedicated test points** for +12V_VALVE, +5 V, +3V3 and GND. Not added.
+- **USB under an L-bracket:** the Teensy USB connector is mid-board (left end of U1, ~27 mm in from the left-edge terminals). It plugs from above. If the board is mounted component-side toward a plate, leave a cutout or access from above.
+
+## FYI (checked, no change needed)
+- Valve outputs already have an M7 flyback on each channel, 1k gate series, **10k gate pulldowns** (valves stay off during boot), and +12 V / switched return on each terminal. No LEDs, as above.
+- Digital inputs already have 10k pulldowns and close to +3V3 (active high), matching firmware.
+- SJ1-SJ3 are copper solder jumpers, default-bridged 1-2 = 80 SPS. They are correctly excluded from the JLC BOM.
+- **5 V budget (R-78E5.0-1.0, 1 A):** Teensy 0.10-0.25 A (includes 3.3 V loads) + HX711 AVDD ~10 mA + six pressure sensors ~60-90 mA + three TM1637 <= 240 mA ≈ 0.45-0.60 A. Comfortable, but do not add more 5 V loads. Teensy 3.3 V regulator headroom is ample (MAX31856 + HX711 DVDD + DI/E-stop are tens of mA vs ~250 mA).
+- **USB-only power:** after the required VIN-VUSB cut, USB alone does **not** power the Teensy or the 5 V rail. 12 V and the 20 A fuse are required for logging and for programming. With 12 V on and the E-stop open, Teensy and sensors stay up; valves stay off. A previous docs sentence that said USB programming works with the board unpowered was wrong and has been corrected.
+- **Input:** J16 is 12 V DC only. The R-78 would accept a wider range, but valve coils and the 15 V zeners are sized for 12 V — do not feed 24 V. Reverse polarity is blocked by Q8 (nothing downstream powers; the fuse does not blow).
+- **Ground:** sensor returns and valve current share the board GND pours. Acceptable on this 2-layer board if the 12 V return at J16 is short and fat. A star-ground split was not done (bigger change).
+- **Mechanicals:** connectors face the four edges; fuse holder is on the front edge for hand replacement on standoffs; H1 is close to J28 (labels placed around it); USB as above. An inserted ATO fuse stands ~20 mm above the board (~25 mm standoffs if components face the L-bracket).
+- **Not assembled by JLC:** Teensy 4.1 and its two 24-pin female headers (hand-solder); 20 A ATO blade fuse (user supplied); SJ1-SJ3 are copper, not parts.
+- **JLC stock (live, this evening CST):** F1 holder C207061 stock 193; AON6407 (Q8, Q10) C7603355 stock 795; MAX31856 C116632 stock **268** (watch this one). Verify DFN5x6 pin-1 orientation of Q8/Q10 in the JLC CPL preview before ordering. No DFN rotation-correction rule is applied.
+- Load-cell 5-wire: no shield pin; tie the shield to E- at one end only.
+- Gate pulldowns, flybacks, E-stop fail-safe, and the first-power jumper requirement were already in the v3 design; they are now visible on the board and in the assembly checklist.
+
+## What was not changed
+No schematic nets, copper, footprints (other than moving the J28 reference text), parts, or board size. Valve terminals were not upsized. No short-protection, test points, or valve LEDs were added.
+
+---
 # DAQ Rev B v3 - replaceable ATO fuse holder (Sun Nov 22 2026, evening CST)
 KiCad 9.0.2. The DAQ 2 originals are untouched (hash-verified).
 

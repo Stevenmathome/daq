@@ -127,7 +127,7 @@ A point that repeats a raw, or that makes the values fold back, is rejected and 
 
 ### Thermocouple correction
 
-Leave `slope: 1` and `offset: 0` unless the probe is off. An ice bath is `CAL TC1 ZERO` (this raw should read 0 °C). A second known temperature is `CAL TC1 SPAN 100`. The chip type (`"T"`, `"K"`, …) is separate from this line and still has to match the junction.
+Leave `slope: 1` and `offset: 0` unless the probe is off. An ice bath is `CAL TC1 ZERO` (this raw should read 0 °C). A second known temperature is `CAL TC1 SPAN 100`. The chip type is separate from this line. This board is type K.
 
 ### Tare
 
@@ -261,7 +261,7 @@ Checked against the schematic, and where it disagrees with the obvious guess:
 - **Digital inputs are not DI1 = pin 31 through DI8 = pin 38.** The schematic and the change report wire them as DI7, DI8, DI6, DI5, DI4, DI3, DI2, DI1 on pins 31–38. The table above is that wiring. The config talks about DI1–DI8, and the firmware maps those names onto these pins.
 - **Valve pins 24–30 match** the original plan: valves 1–6, then the extra 12 V output.
 - **Display CLK/DIO pairs are pins 4/5, 6/7, and 8/9.** The report's "4–9" is these three pairs, in that order.
-- **Thermocouple terminals are labeled pin 1 blue, pin 2 red.** That is the ANSI type T color code (blue positive, red negative). The example config selects type T. If the junction is type K, set `type: "K"` even if the lead colors differ.
+- **Thermocouple terminals are T+ on pin 1 and T- on pin 2.** ANSI type K is yellow positive and red negative. The example config selects type K.
 - **E-stop sense is Teensy pin 10** on Rev B v2. The valve-power contact is J32 pins 1-2, driving P-FET Q10. The firmware only senses pin 10.
 
 ## Wiring
@@ -278,7 +278,7 @@ Board power is J16: pin 1 +12 V, pin 2 GND. The 5 V rail is the R-78E5.0 buck. T
 
 **Load cells, J17–J19.** Pin 1 excitation +5 V, pin 2 excitation GND, pin 3 signal green, pin 4 signal white, into HX711 channel A. If a cell reads the wrong sign, swap pin 3 and pin 4 or set a negative slope.
 
-**Thermocouples, J20–J22.** Pin 1 blue, pin 2 red, into the MAX31856. Chip-down on the 3.3 V rail. DRDY and FAULT are not connected; faults show up in `tc_fault`.
+**Thermocouples, J20–J22.** Pin 1 is T+ (ANSI type K yellow), pin 2 is T- (red), into the MAX31856. Chip-down on the 3.3 V rail. DRDY and FAULT are not connected; faults show up in `tc_fault`.
 
 **Displays, J29–J31.** Pin 1 +5 V, pin 2 GND, pin 3 CLK, pin 4 DIO. TM1637-style modules. The firmware bit-bangs them open-drain. Many modules pull CLK and DIO up to their VCC. If that pull-up goes to +5 V, the Teensy pin sees 5 V when released. Use a module whose pull-ups are to 3.3 V, or level-shift, before trusting a 5 V display on these headers.
 
