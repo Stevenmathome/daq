@@ -202,6 +202,7 @@ def load_pinmap(path: Path = PINS_H) -> PinMap:
         "PIN_PT",
         "PIN_VALVE",
         "PIN_DI",
+        "PIN_ESTOP",
     ]
     missing = [name for name in required if name not in found]
     if missing:
@@ -318,8 +319,8 @@ def validate(data: dict, pins: PinMap, filename: str = "config.yaml") -> Config:
         err("version", "only version 1 is supported")
 
     stream = _as_int(errors, f"{filename}: stream_hz", data.get("stream_hz"))
-    if stream is not None and not 0 <= stream <= 50:
-        err("stream_hz", "expected an integer from 0 to 50")
+    if stream is not None and not 0 <= stream <= 100:
+        err("stream_hz", "expected an integer from 0 to 100")
 
     debounce = _as_int(errors, f"{filename}: debounce_ms", data.get("debounce_ms"))
     if debounce is not None and not 1 <= debounce <= 200:
@@ -685,7 +686,23 @@ def _parse_estop(raw, inputs: list[Input] | None, pins: PinMap, errors: list[str
         return None
     free_text = ", ".join(str(number) for number in pins.free)
     di_index = pins.di_index_for_pin(pin)
-    if pin in pins.occupied and di_index is None:
+    board_estop = pins.by_name["PIN_ESTOP"][0]
+    if pin == board_estop:
+        if pull != "none":
+            _err(
+                errors,
+                f"{path}.pull",
+                "pin 10 already has a 1k series resistor, 100 nF, and a 10k pulldown "
+                "on the board. Use pull: none.",
+            )
+        if active != "low":
+            _err(
+                errors,
+                f"{path}.active",
+                "pin 10 is HIGH when the E-stop is closed (OK) and LOW when it is "
+                "tripped or unplugged. Use active: low.",
+            )
+    elif pin in pins.occupied and di_index is None:
         _err(
             errors,
             f"{path}.pin",
@@ -694,7 +711,7 @@ def _parse_estop(raw, inputs: list[Input] | None, pins: PinMap, errors: list[str
             "when that input's action is none.",
         )
         return None
-    if di_index is not None:
+    elif di_index is not None:
         owner = inputs[di_index]
         if owner.action != "none":
             _err(

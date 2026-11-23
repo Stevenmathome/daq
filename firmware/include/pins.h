@@ -8,8 +8,8 @@
 
 // HX711 load cells. One shared PD_SCK, one DOUT each.
 // U3 DOUT = LC1 = pin 3, U4 DOUT = LC2 = pin 0, U5 DOUT = LC3 = pin 1.
-// RATE (pin 15 of each HX711) is tied to GND, so the chips run at 10 SPS.
-// RATE is not on a Teensy pin; 80 SPS is not selectable in software.
+// RATE is not a Teensy pin. SJ1-SJ3 ship bridged to +3V3, so the chips
+// run at 80 SPS. Cut that bridge and solder the GND side for 10 SPS.
 constexpr uint8_t PIN_LC_SCK = 2;
 constexpr uint8_t PIN_LC_DOUT[3] = {3, 0, 1};
 
@@ -39,10 +39,13 @@ constexpr uint8_t PIN_VALVE[7] = {24, 25, 26, 27, 28, 29, 30};
 // Each input has a 10k pulldown to GND and is switched to +3V3. HIGH = closed.
 constexpr uint8_t PIN_DI[8] = {38, 37, 36, 35, 34, 33, 31, 32};
 
-// GPIOs the Rev B schematic leaves unused. The E-stop sense pin is not one
-// of these by law: config.yaml chooses it. These are the ones that do not
-// already belong to a sensor, a display, or a valve.
-//   10, 14 (A0), 39, 40, 41
+// Rev B v2 E-stop sense. The board has 1k in series, 100 nF to GND, and a
+// 10k pulldown. HIGH means the E-stop contact is closed (OK). LOW means
+// tripped, or the plug is out. Q10 (P-FET in the valve 12 V rail) is
+// switched by J32 pins 1-2; this pin is sense only.
+constexpr uint8_t PIN_ESTOP = 10;
+
+// GPIOs Rev B v2 does not use: 14 (A0), 39, 40, 41.
 
 constexpr float ADC_VREF = 3.3f;
 constexpr int ADC_MAX_COUNT = 4095;
@@ -52,5 +55,7 @@ constexpr float PT_ZERO_V = 0.5f;
 constexpr float PT_FS_V = 4.5f;
 constexpr float PT_FS_PSI = 100.0f;
 
-// Hardware conversion rate. See the RATE-pin note above.
-constexpr int LC_SPS = 10;
+// Factory RATE is +3V3 (80 SPS). The 10 SPS jumper converts in 100 ms, so
+// the not-ready wait stays longer than that.
+constexpr int LC_SPS = 80;
+constexpr uint32_t LC_NOT_READY_MS = 200;

@@ -108,6 +108,8 @@ static int tokenize(char* line, char** tok, int maxTok) {
     return count;
 }
 
+// Rev B v2 pin 10: HIGH is the closed E-stop (OK). LOW is tripped or unplugged.
+// active: low in config.yaml makes a LOW pin report tripped.
 static bool rawTripped() {
     const bool high = digitalRead(CFG_ESTOP_PIN) == HIGH;
     return CFG_ESTOP_ACTIVE_HIGH ? high : !high;
@@ -765,7 +767,7 @@ static void handleLine(char* line, bool* serialReset) {
     if (same(tok[0], "HELP")) {
         Serial.println("# PING");
         Serial.println("# INFO");
-        Serial.println("# STREAM <0-50>");
+        Serial.println("# STREAM <0-100>");
         Serial.println("# VALVE <1-7> <0|1>");
         Serial.println("# ALLOFF");
         Serial.println("# TARE <LC1|LC2|LC3|ALL>");
@@ -795,7 +797,7 @@ static void handleLine(char* line, bool* serialReset) {
     }
     if (same(tok[0], "STREAM") && count == 2) {
         long hz = 0;
-        if (!parseLong(tok[1], &hz) || hz < 0 || hz > 50) {
+        if (!parseLong(tok[1], &hz) || hz < 0 || hz > 100) {
             Serial.println("# ERR stream");
             return;
         }
@@ -862,7 +864,9 @@ static void serviceLoadCells() {
         if (notReadySince == 0) {
             notReadySince = millis();
         }
-        if ((millis() - notReadySince) < 200) {
+        // 80 SPS is ready in 12.5 ms. LC_NOT_READY_MS still covers the
+        // 10 SPS position of SJ1-SJ3 (100 ms conversion).
+        if ((millis() - notReadySince) < LC_NOT_READY_MS) {
             return;
         }
     }

@@ -37,14 +37,16 @@ def test_schematic_pin_map(pins):
     assert pins.by_name["PIN_TC_SCK"] == (13,)
     assert pins.by_name["PIN_PT"] == (20, 19, 18, 17, 16, 15)
     assert pins.by_name["PIN_VALVE"] == (24, 25, 26, 27, 28, 29, 30)
-    assert pins.free == (10, 14, 39, 40, 41)
+    assert pins.by_name["PIN_ESTOP"] == (10,)
+    assert pins.free == (14, 39, 40, 41)
 
 
 def test_example_is_the_fail_safe_panel(example, pins):
     config = _validate(example, pins)
     assert config.estop_pin == 10
     assert config.estop_active_high is False
-    assert config.estop_pull == "down"
+    assert config.estop_pull == "none"
+    assert config.stream_hz == 80
     assert config.inputs[config.estop_reset_input].id == "DI7"
     assert config.inputs[config.estop_reset_input].action == "reset"
     assert [lock.valve for lock in config.locks] == [1, 2, 3, 4, 5, 6, 7]
@@ -63,10 +65,18 @@ def test_example_header_carries_the_estop_and_the_csv(example, pins, tmp_path):
     destination.write_text(text)
     assert "CFG_ESTOP_PIN = 10" in text
     assert "CFG_ESTOP_ACTIVE_HIGH = 0" in text
-    assert "CFG_PULL_DOWN" in text
+    assert "CFG_PULL_NONE" in text
+    assert "CFG_STREAM_HZ = 80" in text
     assert "estop_sense,estop_latch,page" in text
     assert "Specimen 1" in text
     assert destination.read_text() == text
+
+
+def test_stream_limit_matches_firmware():
+    source = (ROOT / "src" / "main.cpp").read_text()
+    validator = (ROOT / "scripts" / "configtool.py").read_text()
+    assert "hz > 100" in source
+    assert "0 to 100" in validator
 
 
 def test_firmware_csv_column_comment_matches_the_generator():
@@ -83,7 +93,7 @@ def test_estop_pin_cannot_be_a_valve(example, pins):
     with pytest.raises(ConfigError) as caught:
         _validate(example, pins)
     assert "pin 24" in str(caught.value)
-    assert "10, 14, 39, 40, 41" in str(caught.value)
+    assert "14, 39, 40, 41" in str(caught.value)
 
 
 def test_estop_can_take_a_spare_input_header(example, pins):
@@ -105,10 +115,23 @@ def test_estop_rejects_a_header_that_already_has_an_action(example, pins):
 
 
 def test_free_pin_must_not_float(example, pins):
+    example["estop"]["pin"] = 14
     example["estop"]["pull"] = "none"
     with pytest.raises(ConfigError) as caught:
         _validate(example, pins)
     assert "floats" in str(caught.value)
+
+
+def test_board_estop_pin_uses_the_onboard_pulldown(example, pins):
+    example["estop"]["pull"] = "down"
+    with pytest.raises(ConfigError) as caught:
+        _validate(example, pins)
+    assert "10k pulldown" in str(caught.value)
+    example["estop"]["pull"] = "none"
+    example["estop"]["active"] = "high"
+    with pytest.raises(ConfigError) as caught:
+        _validate(example, pins)
+    assert "active: low" in str(caught.value)
 
 
 def test_header_pulldown_is_not_fought(example, pins):
