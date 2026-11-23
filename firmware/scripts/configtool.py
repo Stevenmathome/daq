@@ -7,10 +7,14 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import scaling  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 PINS_H = ROOT / "include" / "pins.h"
@@ -113,25 +117,31 @@ class LoadCell:
     id: str
     name: str
     unit: str
-    tare: float
-    counts_per_unit: float
+    slope: float
+    offset: float
+    points: tuple[tuple[float, float], ...] = ()
 
 
 @dataclass
 class Pressure:
     id: str
     name: str
-    zero_volts: float
-    full_scale_volts: float
-    full_scale_psi: float
+    unit: str
+    slope: float
+    offset: float
+    points: tuple[tuple[float, float], ...] = ()
 
 
 @dataclass
 class Thermo:
     id: str
     name: str
+    unit: str
+    slope: float
+    offset: float
     letter: str
     code: int
+    points: tuple[tuple[float, float], ...] = ()
 
 
 @dataclass
@@ -353,6 +363,71 @@ def validate(data: dict, pins: PinMap, filename: str = "config.yaml") -> Config:
     )
 
 
+_LEGACY = {
+    "tare": "use slope and offset. The tare button is a runtime offset and is not stored here.",
+    "counts_per_unit": "use slope = 1/counts_per_unit and offset = -zero_counts * slope.",
+    "zero_volts": "raw is sensor volts. slope = psi_span / (full_scale_volts - zero_volts), offset = -slope * zero_volts.",
+    "full_scale_volts": "use slope and offset. Raw for a pressure channel is sensor volts.",
+    "full_scale_psi": "use slope and offset. A 0.5-4.5 V 0-100 PSI sensor is slope 25, offset -12.5.",
+}
+
+
+def _reject_channel_keys(errors: list[str], path: str, body: dict, allowed: set[str]) -> None:
+    for key in body:
+        if key in allowed:
+            continue
+        hint = _LEGACY.get(key)
+        if hint:
+            _err(errors, path, f"unknown key '{key}'. {hint}")
+        else:
+            _err(errors, path, f"unknown key '{key}'")
+
+
+def _parse_unit(errors: list[str], path: str, value) -> str | None:
+    if not isinstance(value, str) or _UNIT.match(value) is None:
+        _err(errors, path, "expected 1-8 characters: letters, digits, . % /")
+        return None
+    return value
+
+
+def _parse_line(errors: list[str], path: str, body: dict) -> tuple[float, float, tuple] | None:
+    slope = _as_float(errors, f"{path}.slope", body.get("slope"))
+    offset = _as_float(errors, f"{path}.offset", body.get("offset"))
+    if slope == 0:
+        _err(errors, f"{path}.slope", "must not be zero")
+    points = _parse_points(errors, path, body.get("points")) if "points" in body else ()
+    if slope is None or offset is None or points is None or slope == 0:
+        return None
+    return slope, offset, points
+
+
+def _parse_points(errors: list[str], path: str, raw) -> tuple | None:
+    items = _sequence(errors, f"{path}.points", raw)
+    if items is None:
+        return None
+    parsed: list[tuple[float, float]] = []
+    bad = False
+    for index, item in enumerate(items):
+        pair = item
+        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+            _err(errors, f"{path}.points[{index}]", "expected [raw, value]")
+            bad = True
+            continue
+        raw_value = _as_float(errors, f"{path}.points[{index}][0]", pair[0])
+        eng = _as_float(errors, f"{path}.points[{index}][1]", pair[1])
+        if raw_value is None or eng is None:
+            bad = True
+            continue
+        parsed.append((raw_value, eng))
+    if bad:
+        return None
+    try:
+        return scaling.normalize_points(parsed)
+    except scaling.CalError as exc:
+        _err(errors, f"{path}.points", str(exc))
+        return None
+
+
 def _parse_load_cells(raw, errors: list[str], filename: str) -> list[LoadCell] | None:
     items = _sequence(errors, f"{filename}: load_cells", raw)
     if items is None:
@@ -363,7 +438,7 @@ def _parse_load_cells(raw, errors: list[str], filename: str) -> list[LoadCell] |
         body = _mapping(errors, path, item)
         if body is None:
             continue
-        _reject_unknown(errors, path, body, {"id", "name", "tare", "counts_per_unit", "unit"})
+        _reject_channel_keys(errors, path, body, {"id", "name", "slope", "offset", "unit", "points"})
         ident = body.get("id")
         if ident not in LC_IDS:
             _err(errors, f"{path}.id", f"expected one of {list(LC_IDS)}, got {ident!r}")
@@ -371,17 +446,12 @@ def _parse_load_cells(raw, errors: list[str], filename: str) -> list[LoadCell] |
         if ident in parsed:
             _err(errors, f"{path}.id", f"{ident} is listed twice")
         name = _as_name(errors, f"{path}.name", body.get("name"))
-        tare = _as_float(errors, f"{path}.tare", body.get("tare"))
-        scale = _as_float(errors, f"{path}.counts_per_unit", body.get("counts_per_unit"))
-        unit = body.get("unit")
-        if not isinstance(unit, str) or _UNIT.match(unit) is None:
-            _err(errors, f"{path}.unit", "expected 1-8 characters: letters, digits, . % /")
-            unit = None
-        if scale == 0:
-            _err(errors, f"{path}.counts_per_unit", "must not be zero")
-        if None in (name, tare, scale, unit) or scale == 0:
+        unit = _parse_unit(errors, f"{path}.unit", body.get("unit"))
+        line = _parse_line(errors, path, body)
+        if name is None or unit is None or line is None:
             continue
-        parsed[ident] = LoadCell(ident, name, unit, tare, scale)
+        slope, offset, points = line
+        parsed[ident] = LoadCell(ident, name, unit, slope, offset, points)
     missing = [ident for ident in LC_IDS if ident not in parsed]
     if missing:
         _err(errors, f"{filename}: load_cells", f"missing {', '.join(missing)}")
@@ -399,12 +469,7 @@ def _parse_pressures(raw, errors: list[str], filename: str) -> list[Pressure] | 
         body = _mapping(errors, path, item)
         if body is None:
             continue
-        _reject_unknown(
-            errors,
-            path,
-            body,
-            {"id", "name", "zero_volts", "full_scale_volts", "full_scale_psi"},
-        )
+        _reject_channel_keys(errors, path, body, {"id", "name", "slope", "offset", "unit", "points"})
         ident = body.get("id")
         if ident not in PT_IDS:
             _err(errors, f"{path}.id", f"expected one of {list(PT_IDS)}, got {ident!r}")
@@ -412,14 +477,12 @@ def _parse_pressures(raw, errors: list[str], filename: str) -> list[Pressure] | 
         if ident in parsed:
             _err(errors, f"{path}.id", f"{ident} is listed twice")
         name = _as_name(errors, f"{path}.name", body.get("name"))
-        zero_v = _as_float(errors, f"{path}.zero_volts", body.get("zero_volts"))
-        full_v = _as_float(errors, f"{path}.full_scale_volts", body.get("full_scale_volts"))
-        full_psi = _as_float(errors, f"{path}.full_scale_psi", body.get("full_scale_psi"))
-        if zero_v is not None and full_v is not None and zero_v == full_v:
-            _err(errors, f"{path}.full_scale_volts", "span is zero; it must differ from zero_volts")
-        if None in (name, zero_v, full_v, full_psi) or zero_v == full_v:
+        unit = _parse_unit(errors, f"{path}.unit", body.get("unit"))
+        line = _parse_line(errors, path, body)
+        if name is None or unit is None or line is None:
             continue
-        parsed[ident] = Pressure(ident, name, zero_v, full_v, full_psi)
+        slope, offset, points = line
+        parsed[ident] = Pressure(ident, name, unit, slope, offset, points)
     missing = [ident for ident in PT_IDS if ident not in parsed]
     if missing:
         _err(errors, f"{filename}: pressures", f"missing {', '.join(missing)}")
@@ -437,7 +500,7 @@ def _parse_thermos(raw, errors: list[str], filename: str) -> list[Thermo] | None
         body = _mapping(errors, path, item)
         if body is None:
             continue
-        _reject_unknown(errors, path, body, {"id", "name", "type"})
+        _reject_channel_keys(errors, path, body, {"id", "name", "type", "slope", "offset", "unit", "points"})
         ident = body.get("id")
         if ident not in TC_IDS:
             _err(errors, f"{path}.id", f"expected one of {list(TC_IDS)}, got {ident!r}")
@@ -445,10 +508,13 @@ def _parse_thermos(raw, errors: list[str], filename: str) -> list[Thermo] | None
         if ident in parsed:
             _err(errors, f"{path}.id", f"{ident} is listed twice")
         name = _as_name(errors, f"{path}.name", body.get("name"))
+        unit = _parse_unit(errors, f"{path}.unit", body.get("unit"))
         letter = _as_words(errors, f"{path}.type", body.get("type"), set(TC_TYPES))
-        if name is None or letter is None:
+        line = _parse_line(errors, path, body)
+        if name is None or unit is None or letter is None or line is None:
             continue
-        parsed[ident] = Thermo(ident, name, letter, TC_TYPES[letter])
+        slope, offset, points = line
+        parsed[ident] = Thermo(ident, name, unit, slope, offset, letter, TC_TYPES[letter], points)
     missing = [ident for ident in TC_IDS if ident not in parsed]
     if missing:
         _err(errors, f"{filename}: thermocouples", f"missing {', '.join(missing)}")
@@ -741,27 +807,43 @@ def render(config: Config) -> str:
         "    CFG_PULL_UP = 2",
         "};",
         "",
+        "static constexpr uint8_t CFG_MAX_POINTS = 8;",
+        "",
+        "struct CfgPoint {",
+        "    float raw;",
+        "    float value;",
+        "};",
+        "",
         "struct CfgLoadCell {",
         "    const char* id;",
         "    const char* name;",
         "    const char* unit;",
-        "    float tare;",
-        "    float countsPerUnit;",
+        "    float slope;",
+        "    float offset;",
+        "    uint8_t nPoints;",
+        "    uint8_t pointIndex;",
         "};",
         "",
         "struct CfgPressure {",
         "    const char* id;",
         "    const char* name;",
-        "    float zeroVolts;",
-        "    float fullScaleVolts;",
-        "    float fullScalePsi;",
+        "    const char* unit;",
+        "    float slope;",
+        "    float offset;",
+        "    uint8_t nPoints;",
+        "    uint8_t pointIndex;",
         "};",
         "",
         "struct CfgThermo {",
         "    const char* id;",
         "    const char* name;",
+        "    const char* unit;",
+        "    float slope;",
+        "    float offset;",
         "    uint8_t typeCode;",
         "    char typeLetter;",
+        "    uint8_t nPoints;",
+        "    uint8_t pointIndex;",
         "};",
         "",
         "struct CfgPage {",
@@ -791,13 +873,29 @@ def render(config: Config) -> str:
         f"static constexpr uint8_t CFG_ESTOP_RESET_INPUT = {config.estop_reset_input};",
         f"static constexpr char CFG_CSV_HEADER[] = {_c_string(','.join(CSV_COLUMNS))};",
         "",
+    ]
+    pool: list[tuple[float, float]] = []
+    indexes: list[int] = []
+    for channel in list(config.load_cells) + list(config.pressures) + list(config.thermocouples):
+        indexes.append(len(pool))
+        pool.extend(channel.points)
+    if pool:
+        lines.append(f"static constexpr CfgPoint CFG_POINTS[{len(pool)}] = {{")
+        for raw_value, eng in pool:
+            lines.append(f"    {{{_c_float(raw_value)}, {_c_float(eng)}}},")
+        lines.append("};")
+    else:
+        lines.append("static constexpr CfgPoint CFG_POINTS[1] = {{0.0f, 0.0f}};")
+    lines += [
+        "",
         "static constexpr CfgLoadCell CFG_LC[] = {",
     ]
-    for cell in config.load_cells:
+    for slot, cell in enumerate(config.load_cells):
         lines.append(
             "    {"
             f"{_c_string(cell.id)}, {_c_string(cell.name)}, {_c_string(cell.unit)}, "
-            f"{_c_float(cell.tare)}, {_c_float(cell.counts_per_unit)}"
+            f"{_c_float(cell.slope)}, {_c_float(cell.offset)}, "
+            f"{len(cell.points)}, {indexes[slot]}"
             "},"
         )
     lines += [
@@ -805,12 +903,12 @@ def render(config: Config) -> str:
         "",
         "static constexpr CfgPressure CFG_PT[] = {",
     ]
-    for channel in config.pressures:
+    for slot, channel in enumerate(config.pressures):
         lines.append(
             "    {"
-            f"{_c_string(channel.id)}, {_c_string(channel.name)}, "
-            f"{_c_float(channel.zero_volts)}, {_c_float(channel.full_scale_volts)}, "
-            f"{_c_float(channel.full_scale_psi)}"
+            f"{_c_string(channel.id)}, {_c_string(channel.name)}, {_c_string(channel.unit)}, "
+            f"{_c_float(channel.slope)}, {_c_float(channel.offset)}, "
+            f"{len(channel.points)}, {indexes[len(config.load_cells) + slot]}"
             "},"
         )
     lines += [
@@ -818,11 +916,14 @@ def render(config: Config) -> str:
         "",
         "static constexpr CfgThermo CFG_TC[] = {",
     ]
-    for channel in config.thermocouples:
+    base = len(config.load_cells) + len(config.pressures)
+    for slot, channel in enumerate(config.thermocouples):
         lines.append(
             "    {"
-            f"{_c_string(channel.id)}, {_c_string(channel.name)}, "
-            f"{channel.code}, '{channel.letter}'"
+            f"{_c_string(channel.id)}, {_c_string(channel.name)}, {_c_string(channel.unit)}, "
+            f"{_c_float(channel.slope)}, {_c_float(channel.offset)}, "
+            f"{channel.code}, '{channel.letter}', "
+            f"{len(channel.points)}, {indexes[base + slot]}"
             "},"
         )
     lines += [

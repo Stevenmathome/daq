@@ -49,6 +49,12 @@ def test_example_is_the_fail_safe_panel(example, pins):
     assert config.inputs[config.estop_reset_input].action == "reset"
     assert [lock.valve for lock in config.locks] == [1, 2, 3, 4, 5, 6, 7]
     assert config.thermocouples[0].letter == "T"
+    assert config.load_cells[0].slope == 1
+    assert config.load_cells[0].offset == 0
+    assert config.pressures[0].slope == 25
+    assert config.pressures[0].offset == -12.5
+    assert config.thermocouples[0].slope == 1
+    assert config.thermocouples[0].offset == 0
 
 
 def test_example_header_carries_the_estop_and_the_csv(example, pins, tmp_path):
@@ -124,14 +130,42 @@ def test_boolean_thermocouple_type_is_rejected(example, pins):
     assert "quote" in str(caught.value)
 
 
-def test_zero_load_cell_factor_and_zero_pressure_span(example, pins):
-    example["load_cells"][0]["counts_per_unit"] = 0
-    example["pressures"][1]["full_scale_volts"] = example["pressures"][1]["zero_volts"]
+def test_zero_slope_is_rejected(example, pins):
+    example["load_cells"][0]["slope"] = 0
+    with pytest.raises(ConfigError) as caught:
+        _validate(example, pins)
+    assert "must not be zero" in str(caught.value)
+
+
+def test_legacy_scale_keys_are_rejected(example, pins):
+    example["load_cells"][0]["counts_per_unit"] = 280
+    example["pressures"][0]["zero_volts"] = 0.5
     with pytest.raises(ConfigError) as caught:
         _validate(example, pins)
     message = str(caught.value)
-    assert "must not be zero" in message
-    assert "span is zero" in message
+    assert "counts_per_unit" in message
+    assert "slope" in message
+    assert "zero_volts" in message
+
+
+def test_point_table_rejects_a_repeated_raw(example, pins):
+    example["pressures"][0]["points"] = [[0.5, 0], [0.5, 10]]
+    with pytest.raises(ConfigError) as caught:
+        _validate(example, pins)
+    assert "strictly increasing" in str(caught.value)
+
+
+def test_point_table_values_must_not_fold(example, pins):
+    example["pressures"][0]["points"] = [[0.5, 0], [2.5, 80], [4.5, 70]]
+    with pytest.raises(ConfigError) as caught:
+        _validate(example, pins)
+    assert "strictly monotonic" in str(caught.value)
+
+
+def test_point_table_is_accepted_and_sorted(example, pins):
+    example["pressures"][0]["points"] = [[4.5, 100], [0.5, 0]]
+    config = _validate(example, pins)
+    assert config.pressures[0].points == ((0.5, 0.0), (4.5, 100.0))
 
 
 def test_missing_reset_and_duplicate_input(example, pins):
