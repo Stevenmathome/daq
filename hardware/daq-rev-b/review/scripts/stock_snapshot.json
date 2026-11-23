@@ -1,0 +1,211 @@
+{
+ "C4747965": {
+  "componentCode": "C4747965",
+  "componentModelEn": "RST100UF25V006",
+  "componentBrandEn": "KNSCHA",
+  "componentSpecificationEn": "SMD,D6.3xL7.7mm",
+  "stockCount": 6737,
+  "componentLibraryType": "expand",
+  "describe": "-40\u2103~+105\u2103 100uF 2000hrs@105\u2103 25V 6.3mm 7.7mm 91mA@120Hz \u00b120% SMD,D6.3xL7.7mm Aluminum Electrolytic Capacitors - SMD ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0392
+ },
+ "C15850": {
+  "componentCode": "C15850",
+  "componentModelEn": "CL21A106KAYNNNE",
+  "componentBrandEn": "Samsung Electro-Mechanics",
+  "componentSpecificationEn": "0805",
+  "stockCount": 9267979,
+  "componentLibraryType": "base",
+  "describe": "10uF 25V X5R \u00b110% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0311
+ },
+ "C14663": {
+  "componentCode": "C14663",
+  "componentModelEn": "CC0603KRX7R9BB104",
+  "componentBrandEn": "YAGEO",
+  "componentSpecificationEn": "0603",
+  "stockCount": 53085400,
+  "componentLibraryType": "base",
+  "describe": "100nF 50V X7R \u00b110% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0064
+ },
+ "C95872": {
+  "componentCode": "C95872",
+  "componentModelEn": "M7",
+  "componentBrandEn": "MDD(Microdiode Semiconductor)",
+  "componentSpecificationEn": "SMA(DO-214AC)",
+  "stockCount": 5856405,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+150\u2103 1.1V@1A 1A 1kV 30A 5uA@1kV Independent SMA(DO-214AC) Diodes - General Purpose ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0102
+ },
+ "C2104": {
+  "componentCode": "C2104",
+  "componentModelEn": "BZT52C15",
+  "componentBrandEn": "Jiangsu Changjing Electronics Technology Co., Ltd.",
+  "componentSpecificationEn": "SOD-123",
+  "stockCount": 118755,
+  "componentLibraryType": "expand",
+  "describe": "-55\u2103~+150\u2103 1 Independent 100nA 13.8V~15.6V 15V 200\u03a9 30\u03a9 500mW SOD-123 Zener Diodes ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0207
+ },
+ "C8598": {
+  "componentCode": "C8598",
+  "componentModelEn": "B5819W SL",
+  "componentBrandEn": "Jiangsu Changjing Electronics Technology Co., Ltd.",
+  "componentSpecificationEn": "SOD-123",
+  "stockCount": 964141,
+  "componentLibraryType": "base",
+  "describe": "1A 40V 600mV@1A 9A Independent SOD-123 Schottky Diodes ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0251
+ },
+ "C910846": {
+  "componentCode": "C910846",
+  "componentModelEn": "BSMD2920-500-16V",
+  "componentBrandEn": "BHFUSE",
+  "componentSpecificationEn": "2920",
+  "stockCount": 24542,
+  "componentLibraryType": "expand",
+  "describe": "-40\u2103~+85\u2103 1.6mm 10A 16V 2W 31m\u03a9 40A 5.44mm 5A 5m\u03a9 5s 7.98mm 2920 Resettable Fuses ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.2067
+ },
+ "C3029316": {
+  "componentCode": "C3029316",
+  "componentModelEn": "1725656",
+  "componentBrandEn": "Phoenix Contact",
+  "componentSpecificationEn": "Plugin,P=2.54mm",
+  "stockCount": 1259,
+  "componentLibraryType": "expand",
+  "describe": "1 125V 2 2.54mm 2P 6A Green Through Hole \u63d2\u4ef6,P=2.54mm Screw Terminal Blocks ROHS",
+  "preferredComponentFlag": null,
+  "price1": 1.3907
+ },
+ "C3816889": {
+  "componentCode": "C3816889",
+  "componentModelEn": "1725672",
+  "componentBrandEn": "Phoenix Contact",
+  "componentSpecificationEn": "Plugin,P=2.54mm",
+  "stockCount": 1760,
+  "componentLibraryType": "expand",
+  "describe": "1 125V 1x4P 2.54mm 20~30 4 4P 6A Green Through Hole Plugin,P=2.54mm Screw Terminal Blocks ROHS",
+  "preferredComponentFlag": null,
+  "price1": 2.5949
+ },
+ "C5288763": {
+  "componentCode": "C5288763",
+  "componentModelEn": "1725669",
+  "componentBrandEn": "Phoenix Contact",
+  "componentSpecificationEn": "P=2.54mm",
+  "stockCount": 659,
+  "componentLibraryType": "expand",
+  "describe": "1 160V 1x3P 2.54mm 3 3P 6A Green P=2.54mm Screw Terminal Blocks ROHS",
+  "preferredComponentFlag": null,
+  "price1": 1.9404
+ },
+ "C20917": {
+  "componentCode": "C20917",
+  "componentModelEn": "AO3400A",
+  "componentBrandEn": "Alpha & Omega Semicon",
+  "componentSpecificationEn": "SOT-23",
+  "stockCount": 1501066,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+150\u2103 1 N-channel 1.45V 1.4W 30V 48m\u03a9@2.5V 5.7A 50pF 630pF 75pF 7nC@10V N-Channel SOT-23 MOSFETs ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0786
+ },
+ "C2841482": {
+  "componentCode": "C2841482",
+  "componentModelEn": "AO4407A",
+  "componentBrandEn": "UMW(Youtai Semiconductor Co., Ltd.)",
+  "componentSpecificationEn": "SOP-8",
+  "stockCount": 45022,
+  "componentLibraryType": "expand",
+  "describe": "-55\u2103~+150\u2103 1 P-Channel 1.8V 14A 2.05nF 20nC@4.5V\u300140nC@10V 3.1W 300pF 30V 330pF 9.5m\u03a9@10V\u300114.7m\u03a9@4.5V SOP-8 MOSFETs ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.1267
+ },
+ "C21190": {
+  "componentCode": "C21190",
+  "componentModelEn": "0603WAF1001T5E",
+  "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+  "componentSpecificationEn": "0603",
+  "stockCount": 40382622,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+155\u2103 100mW 1k\u03a9 75V Thick Film Resistor \u00b11% \u00b1100ppm/\u2103 0603 Chip Resistor - Surface Mount ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0016
+ },
+ "C25804": {
+  "componentCode": "C25804",
+  "componentModelEn": "0603WAF1002T5E",
+  "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+  "componentSpecificationEn": "0603",
+  "stockCount": 42792212,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+155\u2103 100mW 10k\u03a9 75V Thick Film Resistor \u00b11% \u00b1100ppm/\u2103 0603 Chip Resistor - Surface Mount ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0017
+ },
+ "C4184": {
+  "componentCode": "C4184",
+  "componentModelEn": "0603WAF2002T5E",
+  "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+  "componentSpecificationEn": "0603",
+  "stockCount": 4836052,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+155\u2103 100mW 20k\u03a9 75V Thick Film Resistor \u00b11% \u00b1100ppm/\u2103 0603 Chip Resistor - Surface Mount ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0018
+ },
+ "C25803": {
+  "componentCode": "C25803",
+  "componentModelEn": "0603WAF1003T5E",
+  "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+  "componentSpecificationEn": "0603",
+  "stockCount": 12955615,
+  "componentLibraryType": "base",
+  "describe": "-55\u2103~+155\u2103 100k\u03a9 100mW 75V Thick Film Resistor \u00b11% \u00b1100ppm/\u2103 0603 Chip Resistor - Surface Mount ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.0029
+ },
+ "C22371890": {
+  "componentCode": "C22371890",
+  "componentModelEn": "R-78E5.0-1.0",
+  "componentBrandEn": "YLPTEC",
+  "componentSpecificationEn": "SIP,11.6x7.5mm",
+  "stockCount": 3455,
+  "componentLibraryType": "expand",
+  "describe": "-40\u2103~+85\u2103 1 10.2mm 11.6mm 1A 2200uF 300uA 50mVp-p 5V 7.5mm 7V~36V 850kHz 94% Short Circuit Protection\u3001Automatic fault recovery Step-down type \u00b13% SIP,11.6x7.5mm DC-DC Power Modules ROHS",
+  "preferredComponentFlag": null,
+  "price1": 4.1982
+ },
+ "C43656": {
+  "componentCode": "C43656",
+  "componentModelEn": "HX711",
+  "componentBrandEn": "Avia Semicon (Xiamen)",
+  "componentSpecificationEn": "SOP-16",
+  "stockCount": 5170,
+  "componentLibraryType": "expand",
+  "describe": "-40\u2103~+85\u2103 10Hz 10Hz\u300180Hz 1MHz~20MHz\u300111.0592MHz 2 2.6V~5.5V 20mV\u300140mV 24 2uA External\u3001Built-in Serial port Support Yes SOP-16 Analog to Digital Converters (ADC) ROHS",
+  "preferredComponentFlag": null,
+  "price1": 0.4582
+ },
+ "C116632": {
+  "componentCode": "C116632",
+  "componentModelEn": "MAX31856MUD+",
+  "componentBrandEn": "Analog Devices Inc./Maxim Integrated",
+  "componentSpecificationEn": "TSSOP-14",
+  "stockCount": 268,
+  "componentLibraryType": "expand",
+  "describe": "-55\u2103~+125\u2103 1 10uA 19 3V~3.6V Programmable gain\u3001Digital filtering\u3001Built-in temperature sensor SPI Thermocouple-to-Digital Converter TSSOP-14 ADCs/DACs - Special Purpose ROHS",
+  "preferredComponentFlag": null,
+  "price1": 5.2764
+ }
+}

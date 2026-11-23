@@ -4,6 +4,8 @@ Firmware for the Teensy 4.1 on the DAQ Rev B board. The operator interface is th
 
 The pin numbers below were checked against the Rev B schematic and the Rev B v2 hardware. Digital inputs are not in DI-number order on pins 31–38, and the HX711 rate is set by solder jumpers. Both are called out in the pin map.
 
+The KiCad project, fab files, and drawing set are in [hardware/](hardware/README.md).
+
 ## Safety
 
 Valve gates are driven low before `setup()` does anything else, and again on every boot. HIGH turns a MOSFET on.

@@ -1,0 +1,49 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-11-22T19:56:41-0600",
+    "kicad_version": "9.0.2",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e",
+            "violations": []
+        },
+        {
+            "path": "/S2 Index/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/26bc8b49-a480-404e-a30c-8f8cc2a88b4d",
+            "violations": []
+        },
+        {
+            "path": "/S3 Teensy pins/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/2737ad95-1839-4f8a-b569-8c51f89c8ec4",
+            "violations": []
+        },
+        {
+            "path": "/S4 Connectors 1/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/80800e5f-34db-45b6-ad8c-5ee9d8f17a4f",
+            "violations": []
+        },
+        {
+            "path": "/S5 Connectors 2/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/9558ee0f-434f-49fd-a37f-d8c7915c9a37",
+            "violations": []
+        },
+        {
+            "path": "/S6 Power & solenoids/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/3584c480-9e7e-40d8-9794-1559716978d4",
+            "violations": []
+        },
+        {
+            "path": "/S7 Assembly/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/a59ac023-0567-4acf-9b55-f5c74f3f1c22",
+            "violations": []
+        },
+        {
+            "path": "/S8 Board drawing/",
+            "uuid_path": "/177402f4-82fb-44da-be7d-55fb471d0f6e/a28da22a-8e78-4852-8125-426a15c3bb4a",
+            "violations": []
+        }
+    ],
+    "source": "DAQ Rev B.kicad_sch"
+}
