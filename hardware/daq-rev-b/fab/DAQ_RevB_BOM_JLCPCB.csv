@@ -5,7 +5,7 @@ Comment,Designator,Footprint,LCSC
 "M7 (1N4007, SMA)","D1,D2,D3,D4,D5,D6,D7",D_SMA,C95872
 BZT52C15,"D8,D10",D_SOD-123,C2104
 B5819W,D9,D_SOD-123,C8598
-20A fast,F1,Fuse_2512_6332Metric,C54824505
+"ATO/ATC blade fuse holder (20 A ATO fuse, user supplied)",F1,FuseHolder_Blade_ATO_Littelfuse_FLR_178.6165,C207061
 1725656 Phoenix MPT 2.54mm terminal,"J1,J2,J3,J4,J5,J6,J7,J8,J9,J10,J11,J12,J13,J14,J15,J20,J21,J22","TerminalBlock_Phoenix_MPT-0,5-2-2.54_1x02_P2.54mm_Horizontal",C3029316
 KF128-5.08-2P-AA 5.08mm terminal block 24A,J16,"TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",C474952
 1725672 Phoenix MPT 2.54mm terminal,"J17,J18,J19,J29,J30,J31,J32","TerminalBlock_Phoenix_MPT-0,5-4-2.54_1x04_P2.54mm_Horizontal",C3816889
