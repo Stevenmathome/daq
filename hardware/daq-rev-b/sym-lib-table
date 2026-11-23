@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "teensy")(type "KiCad")(uri "${KIPRJMOD}/lib/teensy.kicad_sym")(options "")(descr "Teensy 4.1 symbol (vendored, XenGi teensy_library)"))
+  (lib (name "DAQ_RevB")(type "KiCad")(uri "${KIPRJMOD}/lib/DAQ_RevB.kicad_sym")(options "")(descr "Project symbols (AO4407A SO-8 P-FET)"))
+)
