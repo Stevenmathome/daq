@@ -8,8 +8,9 @@
 version: 1
 
 # USB CSV rows per second. 0 starts quiet until a STREAM command.
-# Load cells only produce a new sample at 10 Hz (RATE pin is tied to GND).
-stream_hz: 10
+# SJ1-SJ3 ship tied to +3V3, so the HX711s convert at 80 SPS. Match that
+# here. If those jumpers are cut and bridged to GND (10 SPS), set this to 10.
+stream_hz: 80
 
 # How long a button or the E-stop sense must hold before it counts.
 debounce_ms: 25
@@ -84,26 +85,18 @@ inputs:
   - {id: DI7, name: Reset, action: reset, active: high}
   - {id: DI8, name: Valve 4, action: toggle_valve, valve: 4, active: high}
 
-# E-stop sense. The pin is not fixed on the Rev B schematic; set it to the
-# GPIO you actually wire. Free pins: 10, 14, 39, 40, 41.
+# E-stop sense, Rev B v2. Pin 10 has 1k in series, 100 nF to GND, and a
+# 10k pulldown on the board, so pull is none. HIGH = contact closed (OK).
+# LOW = tripped, or the sense plug is out. The firmware only reads this
+# pin. Q10, the P-FET in the valve 12 V rail, is turned on by the NC
+# contact on J32 pins 1-2 and turns the valve rail off by itself.
+# With no E-stop fitted, jumper J32 pins 1-2 or the valves stay unpowered.
 #
-# This example uses pin 10, pulldown, active low:
-#   normally-closed switch from the pin to +3V3.
-#   Pressed, or the wire falls off -> the pin goes low -> latch.
-# An unwired pin 10 therefore reads tripped and the valves stay latched.
-# That is the safe bench state. Tie the pin to +3V3 if you need the valves
-# before the switch exists.
-#
-# The mushroom's power contact is separate. It must open 12 V to the
-# solenoid coils only. Do not put it in series with J16, or the Teensy
-# and the logger die with the valves. See the README wiring notes.
-#
-# reset is the input that clears the latch, and only after this sense has
-# released. A reset that arrives while the line is still tripped is ignored.
+# reset clears the firmware latch only after this sense has gone HIGH again.
 estop:
   pin: 10
   active: low
-  pull: down
+  pull: none
   reset: DI7
 
 # A valve turns on only while every interlock that names it is satisfied
