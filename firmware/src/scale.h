@@ -1,12 +1,21 @@
 #pragma once
 
-// Engineering-unit conversions for the Rev B front end.
-// Keep the arithmetic identical to firmware/scripts/scaling.py.
-// tests/test_scaling.py locks the numbers.
+// value = slope * raw + offset
+//
+// raw is HX711 counts, sensor volts before the divider, or the MAX31856
+// degC, depending on the channel. A point table of at least two points
+// replaces the line. Past either end, the end segment is extended.
+//
+// Keep this identical to firmware/scripts/scaling.py.
 
 #include <stdint.h>
 
 #include "pins.h"
+
+struct FitPoint {
+    float raw;
+    float value;
+};
 
 inline float pinVoltsFromCounts(uint16_t counts) {
     return (static_cast<float>(counts) / static_cast<float>(ADC_MAX_COUNT)) * ADC_VREF;
@@ -17,21 +26,41 @@ inline float sensorVoltsFromCounts(uint16_t counts) {
     return pinVoltsFromCounts(counts) * PT_DIVIDER;
 }
 
-// zeroVolts and fullScaleVolts are sensor volts, before the divider.
-inline float pressurePsi(uint16_t counts, float zeroVolts, float fullScaleVolts, float fullScalePsi) {
-    const float span = fullScaleVolts - zeroVolts;
-    if (span == 0.0f) {
-        return 0.0f;
-    }
-    const float sensor = sensorVoltsFromCounts(counts);
-    return (sensor - zeroVolts) / span * fullScalePsi;
+inline float applyLinear(float raw, float slope, float offset) {
+    return slope * raw + offset;
 }
 
-// countsPerUnit is HX711 counts per engineering unit, after tare.
-// A negative factor flips a cell whose green/white pair is swapped.
-inline float loadEu(int32_t raw, float tare, float countsPerUnit) {
-    if (countsPerUnit == 0.0f) {
+inline float lerpSegment(float raw, float raw0, float value0, float raw1, float value1) {
+    const float span = raw1 - raw0;
+    if (span == 0.0f) {
+        return value0;
+    }
+    return value0 + (raw - raw0) / span * (value1 - value0);
+}
+
+inline float piecewise(float raw, const FitPoint* points, uint8_t count) {
+    if (count < 2) {
         return 0.0f;
     }
-    return (static_cast<float>(raw) - tare) / countsPerUnit;
+    if (raw <= points[0].raw) {
+        return lerpSegment(raw, points[0].raw, points[0].value, points[1].raw, points[1].value);
+    }
+    const uint8_t last = static_cast<uint8_t>(count - 1);
+    if (raw >= points[last].raw) {
+        return lerpSegment(
+            raw, points[last - 1].raw, points[last - 1].value, points[last].raw, points[last].value);
+    }
+    for (uint8_t i = 1; i < count; ++i) {
+        if (raw <= points[i].raw) {
+            return lerpSegment(
+                raw, points[i - 1].raw, points[i - 1].value, points[i].raw, points[i].value);
+        }
+    }
+    return points[last].value;
+}
+
+// Tare is subtracted after the line or the table. It is not stored.
+inline float applyFit(float raw, float slope, float offset, const FitPoint* points, uint8_t count, float tare) {
+    const float base = (count >= 2) ? piecewise(raw, points, count) : applyLinear(raw, slope, offset);
+    return base - tare;
 }

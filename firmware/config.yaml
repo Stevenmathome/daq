@@ -14,32 +14,50 @@ stream_hz: 10
 # How long a button or the E-stop sense must hold before it counts.
 debounce_ms: 25
 
-# counts_per_unit is HX711 counts per engineering unit, after tare.
-# eu = (raw - tare) / counts_per_unit. Use a negative number if a cell
-# reads backwards (green/white swapped). Boot tare is this value; the tare
-# button replaces it until power cycle, and does not rewrite this file.
+# Every analog channel is the same line: value = slope * raw + offset.
+# An optional points table replaces that line. See the README for the
+# bench commands and for how EEPROM and this file interact.
+#
+# raw means:
+#   load cell      HX711 counts
+#   pressure       sensor volts, before the 10k/20k divider
+#   thermocouple   MAX31856 degC, so slope 1 offset 0 leaves the chip alone
+#
+# Two-point line, either from a datasheet or from two bench readings:
+#   slope  = (value1 - value0) / (raw1 - raw0)
+#   offset = value0 - slope * raw0
+# 0.5 V = 0 PSI and 4.5 V = 100 PSI is slope 25, offset -12.5.
+# A load cell, unloaded counts Z and counts L at weight W:
+#   slope = W / (L - Z),  offset = -slope * Z
+# A negative slope flips a cell whose green and white wires are swapped.
+#
+# Optional points: [[raw, value], ...] with 2 to 8 rows. Raw must increase.
+# Values must be strictly increasing or strictly decreasing. The table
+# replaces slope and offset. Outside the ends, the end segment is extended.
+#
+# The tare button is not this offset. It subtracts the live reading until
+# reboot and is not written here or to EEPROM.
 load_cells:
-  - {id: LC1, name: Specimen 1, tare: 0, counts_per_unit: 1, unit: raw}
-  - {id: LC2, name: Specimen 2, tare: 0, counts_per_unit: 1, unit: raw}
-  - {id: LC3, name: Specimen 3, tare: 0, counts_per_unit: 1, unit: raw}
+  - {id: LC1, name: Specimen 1, slope: 1, offset: 0, unit: raw}
+  - {id: LC2, name: Specimen 2, slope: 1, offset: 0, unit: raw}
+  - {id: LC3, name: Specimen 3, slope: 1, offset: 0, unit: raw}
 
-# Volts are at the sensor, before the 10k/20k divider.
-# 0.5 V = 0 PSI and 4.5 V = full_scale_psi is the usual 0.5-4.5 V part.
-# The pin itself only sees two thirds of that.
+# 0.5-4.5 V, 0-100 PSI. slope = 100 / (4.5 - 0.5) = 25, offset = -25 * 0.5.
 pressures:
-  - {id: PT1, name: Pressure 1, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
-  - {id: PT2, name: Pressure 2, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
-  - {id: PT3, name: Pressure 3, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
-  - {id: PT4, name: Pressure 4, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
-  - {id: PT5, name: Pressure 5, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
-  - {id: PT6, name: Pressure 6, zero_volts: 0.5, full_scale_volts: 4.5, full_scale_psi: 100}
+  - {id: PT1, name: Pressure 1, slope: 25, offset: -12.5, unit: psi}
+  - {id: PT2, name: Pressure 2, slope: 25, offset: -12.5, unit: psi}
+  - {id: PT3, name: Pressure 3, slope: 25, offset: -12.5, unit: psi}
+  - {id: PT4, name: Pressure 4, slope: 25, offset: -12.5, unit: psi}
+  - {id: PT5, name: Pressure 5, slope: 25, offset: -12.5, unit: psi}
+  - {id: PT6, name: Pressure 6, slope: 25, offset: -12.5, unit: psi}
 
-# The TC terminal silkscreen is pin 1 blue, pin 2 red (ANSI type T:
-# blue positive, red negative). Change the letter if the junction is not T.
+# Silkscreen is pin 1 blue, pin 2 red (ANSI type T: blue positive, red
+# negative). Change the letter if the junction is not T. slope 1 offset 0
+# is no extra correction.
 thermocouples:
-  - {id: TC1, name: Temp 1, type: "T"}
-  - {id: TC2, name: Temp 2, type: "T"}
-  - {id: TC3, name: Temp 3, type: "T"}
+  - {id: TC1, name: Temp 1, type: "T", slope: 1, offset: 0, unit: C}
+  - {id: TC2, name: Temp 2, type: "T", slope: 1, offset: 0, unit: C}
+  - {id: TC3, name: Temp 3, type: "T", slope: 1, offset: 0, unit: C}
 
 # Display 1, display 2, display 3. The page button cycles this list.
 # Channel order is fixed: one reading per display.

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "calstore.h"
 #include "config_gen.h"
 #include "estop.h"
 #include "hx711_bus.h"
@@ -27,11 +28,12 @@
 //   clears the latch only after the sense line has released. Opening the
 //   USB port reboots a Teensy, which also drops the valves.
 
-static constexpr char FW_VERSION[] = "1.0.0";
+static constexpr char FW_VERSION[] = "1.1.0";
 
 static int32_t gLcRaw[3];
-static float gTare[3];
 static bool gLcFresh[3];
+static ChannelCal gCal[CAL_CHANNELS];
+static bool gEepromOk;
 static uint16_t gPtCounts[6];
 static float gTcC[3];
 static bool gTcOk[3];
@@ -178,26 +180,81 @@ static uint8_t armColumn() {
     return all ? 1 : 0;
 }
 
-static float channelValue(uint8_t channel) {
+static bool readRaw(uint8_t channel, float* raw) {
     if (channel < 3) {
         if (!gLcFresh[channel]) {
-            return NAN;
+            return false;
         }
-        return loadEu(gLcRaw[channel], gTare[channel], CFG_LC[channel].countsPerUnit);
+        *raw = static_cast<float>(gLcRaw[channel]);
+        return true;
     }
     if (channel < 9) {
-        const uint8_t index = static_cast<uint8_t>(channel - 3);
-        return pressurePsi(
-            gPtCounts[index],
-            CFG_PT[index].zeroVolts,
-            CFG_PT[index].fullScaleVolts,
-            CFG_PT[index].fullScalePsi);
+        *raw = sensorVoltsFromCounts(gPtCounts[channel - 3]);
+        return true;
     }
     const uint8_t index = static_cast<uint8_t>(channel - 9);
     if (!gTcOk[index]) {
+        return false;
+    }
+    *raw = gTcC[index];
+    return true;
+}
+
+static float channelValue(uint8_t channel) {
+    float raw = 0.0f;
+    if (!readRaw(channel, &raw)) {
         return NAN;
     }
-    return gTcC[index];
+    return evalChannel(gCal[channel], raw);
+}
+
+static const char* channelId(uint8_t channel) {
+    if (channel < 3) {
+        return CFG_LC[channel].id;
+    }
+    if (channel < 9) {
+        return CFG_PT[channel - 3].id;
+    }
+    return CFG_TC[channel - 9].id;
+}
+
+static const char* channelName(uint8_t channel) {
+    if (channel < 3) {
+        return CFG_LC[channel].name;
+    }
+    if (channel < 9) {
+        return CFG_PT[channel - 3].name;
+    }
+    return CFG_TC[channel - 9].name;
+}
+
+static const char* channelUnit(uint8_t channel) {
+    if (channel < 3) {
+        return CFG_LC[channel].unit;
+    }
+    if (channel < 9) {
+        return CFG_PT[channel - 3].unit;
+    }
+    return CFG_TC[channel - 9].unit;
+}
+
+static const char* calSource(const ChannelCal& cal) {
+    if (cal.dirty) {
+        return "session";
+    }
+    if (cal.fromEeprom) {
+        return "eeprom";
+    }
+    return "config";
+}
+
+static int channelIndexByName(const char* name) {
+    for (uint8_t i = 0; i < CAL_CHANNELS; ++i) {
+        if (same(channelId(i), name)) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 static void printDirectory() {
@@ -208,28 +265,19 @@ static void printDirectory() {
     Serial.println("# estop_sense is 1 when the sense line is tripped.");
     Serial.println("# estop_latch is 1 until reset, after the sense has released.");
     Serial.println("# page is the display page index, starting at 0.");
-    for (uint8_t i = 0; i < 3; ++i) {
-        Serial.print("# ");
-        Serial.print(CFG_LC[i].id);
-        Serial.print(" ");
-        Serial.print(CFG_LC[i].name);
-        Serial.print(" ");
-        Serial.println(CFG_LC[i].unit);
+    Serial.println("# cal=config uses config.yaml. cal=eeprom overrides the file. cal=session is not saved yet.");
+    if (!gEepromOk) {
+        Serial.println("# cal eeprom empty or invalid");
     }
-    for (uint8_t i = 0; i < 6; ++i) {
+    for (uint8_t i = 0; i < CAL_CHANNELS; ++i) {
         Serial.print("# ");
-        Serial.print(CFG_PT[i].id);
-        Serial.print(" ");
-        Serial.print(CFG_PT[i].name);
-        Serial.println(" psi");
-    }
-    for (uint8_t i = 0; i < 3; ++i) {
-        Serial.print("# ");
-        Serial.print(CFG_TC[i].id);
-        Serial.print(" ");
-        Serial.print(CFG_TC[i].name);
-        Serial.print(" type ");
-        Serial.println(CFG_TC[i].typeLetter);
+        Serial.print(channelId(i));
+        Serial.print(' ');
+        Serial.print(channelName(i));
+        Serial.print(' ');
+        Serial.print(channelUnit(i));
+        Serial.print(" cal=");
+        Serial.println(calSource(gCal[i]));
     }
     for (uint8_t i = 0; i < CFG_N_PAGES; ++i) {
         Serial.print("# page ");
@@ -271,10 +319,12 @@ static void doTare(uint8_t mask) {
         if ((mask & (1u << i)) == 0) {
             continue;
         }
-        if (!gLcFresh[i]) {
+        float raw = 0.0f;
+        if (!readRaw(i, &raw)) {
             continue;
         }
-        gTare[i] = static_cast<float>(gLcRaw[i]);
+        // Runtime only. The slope, offset, and point table stay put.
+        gCal[i].tare = evalUntared(gCal[i], raw);
         any = true;
     }
     Serial.println(any ? "# OK tare" : "# ERR no load-cell sample");
@@ -449,6 +499,258 @@ static void commandTare(const char* which) {
     Serial.println("# ERR tare");
 }
 
+static void copyConfigPoints(ChannelCal& dest, uint8_t nPoints, uint8_t pointIndex) {
+    dest.nPoints = nPoints;
+    for (uint8_t i = 0; i < nPoints && i < CAL_MAX_POINTS; ++i) {
+        dest.points[i].raw = CFG_POINTS[pointIndex + i].raw;
+        dest.points[i].value = CFG_POINTS[pointIndex + i].value;
+    }
+}
+
+static void seedCalFromConfig() {
+    for (uint8_t i = 0; i < CAL_CHANNELS; ++i) {
+        gCal[i] = ChannelCal{};
+    }
+    for (uint8_t i = 0; i < 3; ++i) {
+        gCal[i].slope = CFG_LC[i].slope;
+        gCal[i].offset = CFG_LC[i].offset;
+        copyConfigPoints(gCal[i], CFG_LC[i].nPoints, CFG_LC[i].pointIndex);
+    }
+    for (uint8_t i = 0; i < 6; ++i) {
+        gCal[3 + i].slope = CFG_PT[i].slope;
+        gCal[3 + i].offset = CFG_PT[i].offset;
+        copyConfigPoints(gCal[3 + i], CFG_PT[i].nPoints, CFG_PT[i].pointIndex);
+    }
+    for (uint8_t i = 0; i < 3; ++i) {
+        gCal[9 + i].slope = CFG_TC[i].slope;
+        gCal[9 + i].offset = CFG_TC[i].offset;
+        copyConfigPoints(gCal[9 + i], CFG_TC[i].nPoints, CFG_TC[i].pointIndex);
+    }
+}
+
+static void reloadChannel(uint8_t index) {
+    gCal[index] = ChannelCal{};
+    if (index < 3) {
+        gCal[index].slope = CFG_LC[index].slope;
+        gCal[index].offset = CFG_LC[index].offset;
+        copyConfigPoints(gCal[index], CFG_LC[index].nPoints, CFG_LC[index].pointIndex);
+        return;
+    }
+    if (index < 9) {
+        const uint8_t slot = static_cast<uint8_t>(index - 3);
+        gCal[index].slope = CFG_PT[slot].slope;
+        gCal[index].offset = CFG_PT[slot].offset;
+        copyConfigPoints(gCal[index], CFG_PT[slot].nPoints, CFG_PT[slot].pointIndex);
+        return;
+    }
+    const uint8_t slot = static_cast<uint8_t>(index - 9);
+    gCal[index].slope = CFG_TC[slot].slope;
+    gCal[index].offset = CFG_TC[slot].offset;
+    copyConfigPoints(gCal[index], CFG_TC[slot].nPoints, CFG_TC[slot].pointIndex);
+}
+
+static bool pointsOk(const FitPoint* points, uint8_t count) {
+    if (count < 2) {
+        return true;
+    }
+    bool rising = true;
+    bool falling = true;
+    for (uint8_t i = 1; i < count; ++i) {
+        if (points[i].raw <= points[i - 1].raw) {
+            return false;
+        }
+        if (points[i].value <= points[i - 1].value) {
+            rising = false;
+        }
+        if (points[i].value >= points[i - 1].value) {
+            falling = false;
+        }
+    }
+    return rising || falling;
+}
+
+static bool insertPoint(ChannelCal& cal, float raw, float value) {
+    if (cal.nPoints >= CAL_MAX_POINTS) {
+        return false;
+    }
+    FitPoint next[CAL_MAX_POINTS];
+    uint8_t count = 0;
+    bool placed = false;
+    for (uint8_t i = 0; i < cal.nPoints; ++i) {
+        if (!placed && raw < cal.points[i].raw) {
+            next[count++] = FitPoint{raw, value};
+            placed = true;
+        }
+        if (cal.points[i].raw == raw) {
+            return false;
+        }
+        next[count++] = cal.points[i];
+    }
+    if (!placed) {
+        next[count++] = FitPoint{raw, value};
+    }
+    if (!pointsOk(next, count)) {
+        return false;
+    }
+    cal.nPoints = count;
+    for (uint8_t i = 0; i < count; ++i) {
+        cal.points[i] = next[i];
+    }
+    return true;
+}
+
+static void printCalChannel(uint8_t index) {
+    const ChannelCal& cal = gCal[index];
+    Serial.print("# ");
+    Serial.print(channelId(index));
+    Serial.print(" source=");
+    Serial.println(calSource(cal));
+    Serial.print("- id: ");
+    Serial.println(channelId(index));
+    Serial.print("  name: \"");
+    Serial.print(channelName(index));
+    Serial.println("\"");
+    if (index >= 9) {
+        Serial.print("  type: \"");
+        Serial.print(CFG_TC[index - 9].typeLetter);
+        Serial.println("\"");
+    }
+    Serial.print("  slope: ");
+    Serial.println(cal.slope, 6);
+    Serial.print("  offset: ");
+    Serial.println(cal.offset, 6);
+    Serial.print("  unit: \"");
+    Serial.print(channelUnit(index));
+    Serial.println("\"");
+    if (cal.nPoints == 0) {
+        return;
+    }
+    Serial.println("  points:");
+    for (uint8_t i = 0; i < cal.nPoints; ++i) {
+        Serial.print("    - [");
+        Serial.print(cal.points[i].raw, 6);
+        Serial.print(", ");
+        Serial.print(cal.points[i].value, 6);
+        Serial.println("]");
+    }
+}
+
+static bool parseFloat(const char* text, float* out) {
+    char* end = nullptr;
+    const float value = strtof(text, &end);
+    if (end == text || *end != '\0') {
+        return false;
+    }
+    *out = value;
+    return true;
+}
+
+static void commandCal(char** tok, int count) {
+    if (count == 2 && same(tok[1], "SHOW")) {
+        Serial.println("# paste under load_cells, pressures, or thermocouples");
+        for (uint8_t i = 0; i < CAL_CHANNELS; ++i) {
+            printCalChannel(i);
+        }
+        return;
+    }
+    if (count == 2 && same(tok[1], "SAVE")) {
+        calStoreSave(gCal);
+        gEepromOk = true;
+        Serial.println("# OK cal saved");
+        return;
+    }
+    if (count == 2 && same(tok[1], "CLEAR")) {
+        seedCalFromConfig();
+        calStoreSave(gCal);
+        gEepromOk = true;
+        Serial.println("# OK cal cleared");
+        return;
+    }
+    if (count == 3 && same(tok[1], "CLEAR")) {
+        const int index = channelIndexByName(tok[2]);
+        if (index < 0) {
+            Serial.println("# ERR channel");
+            return;
+        }
+        reloadChannel(static_cast<uint8_t>(index));
+        calStoreSave(gCal);
+        gEepromOk = true;
+        Serial.println("# OK cal cleared");
+        return;
+    }
+    if (count < 3) {
+        Serial.println("# ERR cal");
+        return;
+    }
+    const int index = channelIndexByName(tok[1]);
+    if (index < 0) {
+        Serial.println("# ERR channel");
+        return;
+    }
+    ChannelCal& cal = gCal[index];
+    if (same(tok[2], "ZERO") && count == 3) {
+        float raw = 0.0f;
+        if (!readRaw(static_cast<uint8_t>(index), &raw)) {
+            Serial.println("# ERR no sample");
+            return;
+        }
+        if (cal.slope == 0.0f) {
+            Serial.println("# ERR slope");
+            return;
+        }
+        cal.offset = -cal.slope * raw;
+        cal.nPoints = 0;
+        cal.hasZero = true;
+        cal.zeroRaw = raw;
+        cal.dirty = true;
+        Serial.println("# OK zero");
+        return;
+    }
+    if ((same(tok[2], "SPAN") || same(tok[2], "POINT")) && count == 4) {
+        float known = 0.0f;
+        if (!parseFloat(tok[3], &known)) {
+            Serial.println("# ERR cal");
+            return;
+        }
+        float raw = 0.0f;
+        if (!readRaw(static_cast<uint8_t>(index), &raw)) {
+            Serial.println("# ERR no sample");
+            return;
+        }
+        if (same(tok[2], "SPAN")) {
+            if (known == 0.0f) {
+                Serial.println("# ERR span");
+                return;
+            }
+            if (cal.slope == 0.0f && !cal.hasZero) {
+                Serial.println("# ERR slope");
+                return;
+            }
+            const float zeroRaw = cal.hasZero ? cal.zeroRaw : -cal.offset / cal.slope;
+            if (raw == zeroRaw) {
+                Serial.println("# ERR span");
+                return;
+            }
+            cal.slope = known / (raw - zeroRaw);
+            cal.offset = -cal.slope * zeroRaw;
+            cal.nPoints = 0;
+            cal.hasZero = true;
+            cal.zeroRaw = zeroRaw;
+            cal.dirty = true;
+            Serial.println("# OK span");
+            return;
+        }
+        if (!insertPoint(cal, raw, known)) {
+            Serial.println("# ERR point");
+            return;
+        }
+        cal.dirty = true;
+        Serial.println("# OK point");
+        return;
+    }
+    Serial.println("# ERR cal");
+}
+
 static void handleLine(char* line, bool* serialReset) {
     char* tok[6];
     const int count = tokenize(line, tok, 6);
@@ -469,6 +771,16 @@ static void handleLine(char* line, bool* serialReset) {
         Serial.println("# TARE <LC1|LC2|LC3|ALL>");
         Serial.println("# PAGE");
         Serial.println("# RESET");
+        Serial.println("# CAL <ch> ZERO");
+        Serial.println("# CAL <ch> SPAN <value>");
+        Serial.println("# CAL <ch> POINT <value>");
+        Serial.println("# CAL SAVE");
+        Serial.println("# CAL SHOW");
+        Serial.println("# CAL CLEAR [ch]");
+        return;
+    }
+    if (same(tok[0], "CAL")) {
+        commandCal(tok, count);
         return;
     }
     if (same(tok[0], "INFO")) {
@@ -630,7 +942,7 @@ static void printRow() {
     Serial.print(micros());
     for (uint8_t i = 0; i < 3; ++i) {
         Serial.print(',');
-        printFloat(loadEu(gLcRaw[i], gTare[i], CFG_LC[i].countsPerUnit), 3, gLcFresh[i]);
+        printFloat(channelValue(i), 3, gLcFresh[i]);
     }
     for (uint8_t i = 0; i < 3; ++i) {
         Serial.print(',');
@@ -642,10 +954,7 @@ static void printRow() {
     }
     for (uint8_t i = 0; i < 6; ++i) {
         Serial.print(',');
-        printFloat(
-            pressurePsi(gPtCounts[i], CFG_PT[i].zeroVolts, CFG_PT[i].fullScaleVolts, CFG_PT[i].fullScalePsi),
-            2,
-            true);
+        printFloat(channelValue(static_cast<uint8_t>(3 + i)), 2, true);
     }
     for (uint8_t i = 0; i < 6; ++i) {
         Serial.print(',');
@@ -654,7 +963,7 @@ static void printRow() {
     uint8_t fault = 0;
     for (uint8_t i = 0; i < 3; ++i) {
         Serial.print(',');
-        printFloat(gTcC[i], 2, gTcOk[i]);
+        printFloat(channelValue(static_cast<uint8_t>(9 + i)), 2, gTcOk[i]);
         if (!gTcOk[i]) {
             fault = static_cast<uint8_t>(fault | (1u << i));
         }
@@ -706,7 +1015,6 @@ void setup() {
 
     tcBegin();
     for (uint8_t i = 0; i < 3; ++i) {
-        gTare[i] = CFG_LC[i].tare;
         tcConfigure(i, CFG_TC[i].typeCode);
         gPtCounts[i] = static_cast<uint16_t>(analogRead(PIN_PT[i]));
     }
@@ -716,6 +1024,8 @@ void setup() {
     dispBegin();
     (void)gValveBoot;
 
+    seedCalFromConfig();
+    gEepromOk = calStoreLoad(gCal);
     seedInputs();
     seedSense();
     gStreamHz = CFG_STREAM_HZ;
